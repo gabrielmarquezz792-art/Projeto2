@@ -4,6 +4,7 @@ import datetime
 # ================= MENU =================
 def menu():
     nome_arq = 'log.txt'
+
     while True:
         print('\nMENU')
         print('1 - Gerar logs')
@@ -35,8 +36,7 @@ def menu():
         else:
             print('Opção inválida')
 
-
-# ================= GERAÇÃO DE LOGS =================
+# ================= GERAÇÃO =================
 def gerarArquivo(nome_arq, qtd):
     arq = open(nome_arq, 'w', encoding='utf-8')
 
@@ -46,31 +46,36 @@ def gerarArquivo(nome_arq, qtd):
     arq.close()
     print('Logs gerados!')
 
-
 def montarLog(i):
-    return f'[{gerarData(i)}] {gerarIp(i)} - {gerarMetodo()} - {gerarStatus(i)} - {gerarRecurso(i)} - {gerarTempo(i)}ms - {gerarTamanho()}B - HTTP/1.1 - {gerarAgente(i)} - /home'
-
+    return f'[{gerarData(i)}] {gerarIp(i)} - {gerarMetodo()} - {gerarStatus(i)} - {gerarRecurso(i)} - {gerarTempo(i)}ms - {gerarTamanho()}B - {gerarProtocolo()} - {gerarAgente(i)} - /home'
 
 def gerarData(i):
     base = datetime.datetime.now()
     delta = datetime.timedelta(seconds=i * 10)
     return (base + delta).strftime('%d/%m/%Y %H:%M:%S')
 
-
-# IP fixo para gerar comportamento suspeito
 def gerarIp(i):
-    if 20 <= i <= 60:
+    if 20 <= i <= 50:
         return '203.120.45.7'
-    return f'192.168.0.{random.randint(1, 20)}'
 
+    r = random.randint(1,6)
+    if r == 1: return '192.168.12.1'
+    if r == 2: return '192.168.12.3'
+    if r == 3: return '192.100.12.3'
+    if r == 4: return '192.168.162.3'
+    if r == 5: return '192.168.23.3'
+    return '192.168.0.3'
 
 def gerarMetodo():
-    if random.randint(0, 1) == 0:
-        return 'GET'
-    return 'POST'
+    r = random.randint(1, 7)
+    if r == 1: return 'GET'
+    if r == 2: return 'POST'
+    if r == 3: return 'PUT'
+    if r == 4: return 'PATCH'
+    if r == 5: return 'DELETE'
+    if r == 6: return 'HEAD'
+    return 'OPTIONS'
 
-
-# gera rotas (inclui /login para força bruta)
 def gerarRecurso(i):
     if 10 <= i <= 20:
         return '/login'
@@ -80,34 +85,33 @@ def gerarRecurso(i):
         return '/backup'
     return '/home'
 
-
-# gera status (inclui padrões de erro)
 def gerarStatus(i):
     if 10 <= i <= 20:
-        return 403  # força bruta
-    if 70 <= i <= 72:
-        return 500  # falha crítica
+        return 403
+    if random.randint(1, 25) == 1:
+        return 500
     if i % 12 == 0:
         return 404
     return 200
 
-
-# gera tempo (inclui lentidão)
 def gerarTempo(i):
     if 30 <= i <= 40:
-        return 900 + i * 10  # lento
+        return 100 + i * 20
     return random.randint(50, 500)
-
 
 def gerarTamanho():
     return random.randint(200, 2000)
 
+def gerarProtocolo():
+    r = random.randint(0, 2)
+    if r == 0: return 'HTTP/1.0'
+    if r == 1: return 'HTTP/1.1'
+    return 'HTTP/2.0'
 
 def gerarAgente(i):
     if i % 20 == 0:
         return 'GoogleBot'
     return 'Chrome'
-
 
 # ================= ANÁLISE =================
 def analisarLogs(nome_arq):
@@ -117,42 +121,42 @@ def analisarLogs(nome_arq):
         print('Arquivo não encontrado')
         return
 
-    # ===== CONTADORES GERAIS =====
-    total = 0
-    sucesso = 0
-    erro = 0
-    erro500 = 0
+    total = sucesso = erro = erro500 = 0
+    status200 = status403 = status404 = status500 = 0
 
     somaTempo = 0
     maiorTempo = 0
-    menorTempo = 999999
+    menorTempo = 1000000
 
-    rapido = 0
-    normal = 0
-    lento = 0
+    rapido = normal = lento = 0
 
-    # ===== DEGRADAÇÃO =====
-    contLentoSeq = 0   # quantos lentos seguidos
-    degradacao = 0     # eventos de degradação
+    tempoAnterior = -1
+    contAumento = 0
+    degradacao = 0
 
-    # ===== FORÇA BRUTA =====
     contLogin403 = 0
     forcaBruta = 0
     ultimoIPForca = ''
 
-    # ===== FALHA CRÍTICA =====
     cont500 = 0
     falhaCritica = 0
 
-    # ===== BOT =====
     ultimoIP = ''
     contIP = 0
     bot = 0
     ultimoBot = ''
 
-    # ===== ROTAS =====
-    rotas = 0
-    rotasErro = 0
+    rotas = rotasErro = 0
+    adminErro = 0
+
+    home = login = admin = backup = 0
+
+    # IP MAIS ATIVO
+    ip1 = ip2 = ip3 = ip4 = ip5 = ip6 = ''
+    c1 = c2 = c3 = c4 = c5 = c6 = 0
+
+    # IP COM MAIS ERROS
+    e1 = e2 = e3 = e4 = e5 = e6 = 0
 
     linha = arq.readline()
 
@@ -164,24 +168,32 @@ def analisarLogs(nome_arq):
         total += 1
         i = 0
 
-        # ===== PULAR DATA =====
-        while linha[i] != ']':
-            i += 1
+        while linha[i] != ']': i += 1
         i += 2
 
-        # ===== IP =====
         ip = ''
         while linha[i] != ' ':
             ip += linha[i]
             i += 1
         i += 3
 
-        # ===== PULAR MÉTODO =====
-        while linha[i] != ' ':
-            i += 1
+        # CONTAR IP
+        if ip == ip1: c1 += 1
+        elif ip == ip2: c2 += 1
+        elif ip == ip3: c3 += 1
+        elif ip == ip4: c4 += 1
+        elif ip == ip5: c5 += 1
+        elif ip == ip6: c6 += 1
+        elif ip1 == '': ip1 = ip; c1 = 1
+        elif ip2 == '': ip2 = ip; c2 = 1
+        elif ip3 == '': ip3 = ip; c3 = 1
+        elif ip4 == '': ip4 = ip; c4 = 1
+        elif ip5 == '': ip5 = ip; c5 = 1
+        elif ip6 == '': ip6 = ip; c6 = 1
+
+        while linha[i] != ' ': i += 1
         i += 3
 
-        # ===== STATUS =====
         status_txt = ''
         while linha[i] != ' ':
             status_txt += linha[i]
@@ -189,52 +201,61 @@ def analisarLogs(nome_arq):
         status = int(status_txt)
         i += 3
 
-        # ===== RECURSO =====
         recurso = ''
         while linha[i] != ' ':
             recurso += linha[i]
             i += 1
         i += 3
 
-        # ===== TEMPO =====
         tempo_txt = ''
         while linha[i] != 'm':
             tempo_txt += linha[i]
             i += 1
         tempo = int(tempo_txt)
 
-        # ===== TEMPO / PERFORMANCE =====
         somaTempo += tempo
+        if tempo > maiorTempo: maiorTempo = tempo
+        if tempo < menorTempo: menorTempo = tempo
 
-        if tempo > maiorTempo:
-            maiorTempo = tempo
-        if tempo < menorTempo:
-            menorTempo = tempo
+        if tempo < 200: rapido += 1
+        elif tempo < 800: normal += 1
+        else: lento += 1
 
-        if tempo < 200:
-            rapido += 1
-            contLentoSeq = 0
-        elif tempo < 800:
-            normal += 1
-            contLentoSeq = 0
-        else:
-            lento += 1
-            contLentoSeq += 1
+        # DEGRADAÇÃO
+        if tempoAnterior != -1:
+            if tempo > tempoAnterior:
+                contAumento += 1
+                if contAumento == 3:
+                    degradacao += 1
+            else:
+                contAumento = 0
+        tempoAnterior = tempo
 
-            # evento de degradação = 3 lentos seguidos
-            if contLentoSeq == 3:
-                degradacao += 1
-
-        # ===== STATUS =====
+        # STATUS
         if status == 200:
             sucesso += 1
-        else:
+            status200 += 1
+        elif status == 403:
+            status403 += 1
             erro += 1
-
-        if status == 500:
+        elif status == 404:
+            status404 += 1
+            erro += 1
+        elif status == 500:
+            status500 += 1
+            erro += 1
             erro500 += 1
 
-        # ===== FORÇA BRUTA =====
+        # ERRO POR IP
+        if status != 200:
+            if ip == ip1: e1 += 1
+            elif ip == ip2: e2 += 1
+            elif ip == ip3: e3 += 1
+            elif ip == ip4: e4 += 1
+            elif ip == ip5: e5 += 1
+            elif ip == ip6: e6 += 1
+
+        # FORÇA BRUTA
         if recurso == '/login' and status == 403:
             contLogin403 += 1
             if contLogin403 == 3:
@@ -243,7 +264,7 @@ def analisarLogs(nome_arq):
         else:
             contLogin403 = 0
 
-        # ===== FALHA CRÍTICA =====
+        # FALHA CRÍTICA
         if status == 500:
             cont500 += 1
             if cont500 == 3:
@@ -251,7 +272,7 @@ def analisarLogs(nome_arq):
         else:
             cont500 = 0
 
-        # ===== BOT =====
+        # BOT
         if ip == ultimoIP:
             contIP += 1
             if contIP == 5:
@@ -261,51 +282,95 @@ def analisarLogs(nome_arq):
             ultimoIP = ip
             contIP = 1
 
-        # ===== ROTAS SENSÍVEIS =====
+        # ROTAS
         if recurso == '/admin' or recurso == '/backup':
             rotas += 1
             if status != 200:
                 rotasErro += 1
 
+        if recurso == '/admin' and status != 200:
+            adminErro += 1
+
+        # RECURSOS
+        if recurso == '/home': home += 1
+        if recurso == '/login': login += 1
+        if recurso == '/admin': admin += 1
+        if recurso == '/backup': backup += 1
+
         linha = arq.readline()
 
     arq.close()
 
-    # ===== RESULTADOS =====
     disponibilidade = (sucesso / total) * 100
+    taxaErro = (erro / total) * 100
     mediaTempo = somaTempo / total
 
+    # RECURSO MAIS ACESSADO
+    recursoMais = '/home'
+    maior = home
+    if login > maior: recursoMais = '/login'; maior = login
+    if admin > maior: recursoMais = '/admin'; maior = admin
+    if backup > maior: recursoMais = '/backup'
+
+    # IP MAIS ATIVO
+    ipMaisAtivo = ip1
+    maior = c1
+    if c2 > maior: ipMaisAtivo = ip2; maior = c2
+    if c3 > maior: ipMaisAtivo = ip3; maior = c3
+    if c4 > maior: ipMaisAtivo = ip4; maior = c4
+    if c5 > maior: ipMaisAtivo = ip5; maior = c5
+    if c6 > maior: ipMaisAtivo = ip6
+
+    # IP COM MAIS ERROS
+    ipMaisErro = ip1
+    maiorErro = e1
+    if e2 > maiorErro: ipMaisErro = ip2; maiorErro = e2
+    if e3 > maiorErro: ipMaisErro = ip3; maiorErro = e3
+    if e4 > maiorErro: ipMaisErro = ip4; maiorErro = e4
+    if e5 > maiorErro: ipMaisErro = ip5; maiorErro = e5
+    if e6 > maiorErro: ipMaisErro = ip6
+
+    # ESTADO
     if falhaCritica > 0 or disponibilidade < 70:
         estado = 'CRITICO'
-    elif disponibilidade < 85:
+    elif disponibilidade < 85 or lento > (total * 0.3):
         estado = 'INSTAVEL'
-    elif disponibilidade < 95:
+    elif disponibilidade < 95 or bot > 0:
         estado = 'ATENCAO'
     else:
         estado = 'SAUDAVEL'
 
-    # ===== RELATÓRIO =====
+    # RELATÓRIO
     print('\n===== RELATÓRIO =====')
     print('Total:', total)
     print('Sucesso:', sucesso)
     print('Erros:', erro)
-    print('Erros 500:', erro500)
-    print('Tempo médio:', mediaTempo)
+    print('Erros críticos:', erro500)
+    print(f'Disponibilidade: {disponibilidade:.3f}%')
+    print(f'Taxa de erro: {taxaErro:.3f}%')
+    print(f'Tempo médio: {mediaTempo:.3f}')
     print('Maior tempo:', maiorTempo)
     print('Menor tempo:', menorTempo)
     print('Rápidos:', rapido)
     print('Normais:', normal)
     print('Lentos:', lento)
-    print('Eventos de degradação:', degradacao)
+    print('Status 200:', status200)
+    print('Status 403:', status403)
+    print('Status 404:', status404)
+    print('Status 500:', status500)
+    print('Recurso mais acessado:', recursoMais)
+    print('IP mais ativo:', ipMaisAtivo)
+    print('IP com mais erros:', ipMaisErro)
     print('Força bruta:', forcaBruta)
     print('Último IP força bruta:', ultimoIPForca)
+    print('Acessos indevidos /admin:', adminErro)
+    print('Eventos de degradação:', degradacao)
     print('Falha crítica:', falhaCritica)
     print('Bots:', bot)
     print('Último bot:', ultimoBot)
     print('Rotas sensíveis:', rotas)
-    print('Falhas rotas:', rotasErro)
+    print('Falhas rotas sensíveis:', rotasErro)
     print('Estado:', estado)
 
-
 # ================= EXECUÇÃO =================
-menu()  
+menu()
