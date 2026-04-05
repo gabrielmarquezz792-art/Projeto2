@@ -332,13 +332,13 @@ def analisarLogs(nome_arq):
 
     # ESTADO
     if falhaCritica > 0 or disponibilidade < 70:
-        estado = 'CRITICO'
+        estado = 'CRÍTICO'
     elif disponibilidade < 85 or lento > (total * 0.3):
-        estado = 'INSTAVEL'
+        estado = 'INSTÁVEL'
     elif disponibilidade < 95 or bot > 0:
-        estado = 'ATENCAO'
+        estado = 'ATENÇÃO'
     else:
-        estado = 'SAUDAVEL'
+        estado = 'SAUDÁVEL'
 
     # RELATÓRIO
     print('\n===== RELATÓRIO =====')
