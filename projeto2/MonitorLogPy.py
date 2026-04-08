@@ -113,6 +113,7 @@ def gerarAgente(i):
         return 'GoogleBot'
     return 'Chrome'
 
+
 # ================= ANÁLISE =================
 def analisarLogs(nome_arq):
     try:
