@@ -1,3 +1,5 @@
+#Gabriel Marques Avalo da Silva, Carlos José Rosa Jr., Rodrigo Werlang Dias
+
 import random
 import datetime
 
